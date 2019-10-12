@@ -80,16 +80,13 @@ Here is a full description of the command-line arguments.
 
 Screenshots
 -----------
-.. image:: https://raw.githubusercontent.com/mristin/mediti-collector/master/screenshots/screenshot-attending.png
-    :scale: 50 %
+.. image:: https://raw.githubusercontent.com/mristin/mediti-collector/master/screenshots/screenshot-attending-small.png
     :alt: screenshot of an "attending" action
 
-.. image:: https://raw.githubusercontent.com/mristin/mediti-collector/master/screenshots/screenshot-unattending.png
-    :scale: 50 %
+.. image:: https://raw.githubusercontent.com/mristin/mediti-collector/master/screenshots/screenshot-unattending-small.png
     :alt: screenshot of an "unattending" action
 
-.. image:: https://raw.githubusercontent.com/mristin/mediti-collector/master/screenshots/screenshot-meditating.png
-    :scale: 50 %
+.. image:: https://raw.githubusercontent.com/mristin/mediti-collector/master/screenshots/screenshot-meditating-small.png
     :alt: screenshot of a "meditating" action
 
 Installation
