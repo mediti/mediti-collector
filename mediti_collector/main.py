@@ -344,7 +344,7 @@ def do_fade(
             action.value)
 
     with contextlib.ExitStack() as exit_stack:
-        exit_stack.callback(engine.stop)
+        exit_stack.callback(engine.stop)  # pylint: disable=no-member
 
         with concurrent.futures.ThreadPoolExecutor() as executor:
             engine.say(text=announcement)
