@@ -1,0 +1,11 @@
+#!/usr/bin/env python3
+
+"""Collect training data off-line for mediti.:"""
+
+import sys
+
+import mediti_collector.main
+
+if __name__ == "__main__":
+    sys.exit(mediti_collector.main.main())
+
