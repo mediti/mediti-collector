@@ -1,7 +1,7 @@
 mediti-collector
 ================
 .. image:: https://travis-ci.com/mristin/mediti-collector.svg?branch=master
-    :target: https://travis-ci.com/mristin/mediti-collector.svg?branch=master
+    :target: https://travis-ci.com/mristin/mediti-collector
     :alt: Build Status
 
 .. image:: https://coveralls.io/repos/github/mristin/mediti-collector/badge.svg?branch=master
