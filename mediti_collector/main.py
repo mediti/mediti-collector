@@ -2,7 +2,6 @@
 """Provide the main point of entry."""
 
 import argparse
-import concurrent.futures
 import contextlib
 import datetime
 import enum
@@ -14,7 +13,8 @@ from typing import Any, Callable, Optional, Sequence, Tuple
 
 import cv2
 import numpy as np
-import pyttsx3
+
+import mediti_collector.announce
 
 _VALID_IDENTIFIER_RE = re.compile(r'^[a-zA-Z-_]+$')
 
@@ -322,14 +322,14 @@ class Viewer:
 
 def do_fade(
         actions: Sequence[Action], action: Optional[Action],
-        engine: pyttsx3.Engine, viewer: Viewer,
+        announcer: mediti_collector.announce.Announcer, viewer: Viewer,
         exit_fn: Callable[[], bool]) -> Tuple[Action, State]:
     """
     Handle the FADE state: sample the new action and announce it.
 
     :param actions: all recordable actions
     :param action: last recorded action, if available
-    :param engine: text-to-speech engine
+    :param announcer: announces the messages
     :param viewer: renders the view for the user
     :param exit_fn: signals that the state should be abandoned
     :return: new action, new state
@@ -344,27 +344,22 @@ def do_fade(
             action.value)
 
     with contextlib.ExitStack() as exit_stack:
-        exit_stack.callback(engine.stop)  # pylint: disable=no-member
+        exit_stack.callback(announcer.stop)  # pylint: disable=no-member
 
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            engine.say(text=announcement)
-            future = executor.submit(fn=engine.runAndWait)
+        announcer.say(text=announcement)
 
-            should_exit = False
+        should_exit = False
 
-            while not future.done():
-                viewer.display_fade(action=action)
+        while not announcer.done() and not should_exit:
+            viewer.display_fade(action=action)
 
-                if exit_fn():
-                    should_exit = True
-                    engine.stop()
+            if exit_fn():
+                should_exit = True
 
-            _ = future.result()
-
-            if should_exit:
-                state = State.EXIT
-            else:
-                state = State.RECORDING
+        if should_exit:
+            state = State.EXIT
+        else:
+            state = State.RECORDING
 
     return action, state
 
@@ -418,7 +413,8 @@ def do_recording(
 
 
 def execute_state_machine(
-        actions: Sequence[Action], engine: pyttsx3.Engine, viewer: Viewer,
+        actions: Sequence[Action],
+        announcer: mediti_collector.announce.Announcer, viewer: Viewer,
         action_period: datetime.timedelta, frame_period: datetime.timedelta,
         store_fn: Callable[[Action, datetime.datetime], None],
         exit_fn: Callable[[], bool]) -> None:
@@ -426,7 +422,7 @@ def execute_state_machine(
     Execute the state machine by going through the states.
 
     :param actions: all recordable actions
-    :param engine: text-to-speech engine
+    :param announcer: text-to-speech announcer
     :param action_period: the duration of the action recording
     :param frame_period: period between two recorded frames
     :param store_fn: stores the frame
@@ -442,7 +438,7 @@ def execute_state_machine(
             action, state = do_fade(
                 actions=actions,
                 action=action,
-                engine=engine,
+                announcer=announcer,
                 viewer=viewer,
                 exit_fn=exit_fn)
 
@@ -479,14 +475,13 @@ def main() -> int:
         # Initialization
         ##
 
-        engine = pyttsx3.init()
-        engine.setProperty('rate', 150)
+        announcer = mediti_collector.announce.Announcer()
 
         cap = cv2.VideoCapture(args.camera_identifier)
 
         actions = [Action(value=an_action) for an_action in args.actions]
 
-        with Recording(capture=cap) as recording:
+        with announcer, Recording(capture=cap) as recording:
             viewer = Viewer(recording=recording)
 
             def store_fn(an_action: Action, utcnow: datetime.datetime) -> None:
@@ -506,7 +501,7 @@ def main() -> int:
             execute_state_machine(
                 actions=actions,
                 viewer=viewer,
-                engine=engine,
+                announcer=announcer,
                 action_period=datetime.timedelta(seconds=args.period),
                 frame_period=datetime.timedelta(seconds=1.0 / args.frequency),
                 store_fn=store_fn,

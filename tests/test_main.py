@@ -4,7 +4,6 @@
 import datetime
 import math
 import pathlib
-import time
 import unittest
 from typing import List, Optional, Tuple
 
@@ -136,23 +135,40 @@ class TestStateMachine(unittest.TestCase):
 
         announcement_period = datetime.timedelta(seconds=0.5)
 
-        class MockEngine:
+        class MockAnnouner:
             # pylint: disable=invalid-name
             # pylint: disable=no-self-use
             def __init__(self) -> None:
                 self.queue = []  # type: List[str]
+                self.terminated = False
+                self._start = None  # type: Optional[datetime.datetime]
 
             def say(self, text: str) -> None:
                 self.queue.append(text)
+                self._start = datetime.datetime.utcnow()
 
-            def runAndWait(self) -> None:
-                time.sleep(announcement_period.total_seconds())
-                self.queue.pop()
+            def done(self) -> bool:
+                if self._start is None:
+                    result = True
+                else:
+                    now = datetime.datetime.utcnow()
+                    if now - self._start > announcement_period:
+                        self._start = None
+                        result = True
+                    else:
+                        result = False
+
+                return result
 
             def stop(self) -> None:
                 self.queue = []
+                self._start = None
 
-        engine = MockEngine()
+            def terminate(self) -> None:
+                self.terminated = True
+                self._start = None
+
+        announcer = MockAnnouner()
 
         class MockViewer:
             # pylint: disable=unused-argument
@@ -187,7 +203,7 @@ class TestStateMachine(unittest.TestCase):
 
         mediti_collector.main.execute_state_machine(
             actions=actions,
-            engine=engine,
+            announcer=announcer,  # type: ignore
             viewer=viewer,  # type: ignore
             action_period=datetime.timedelta(seconds=2),
             frame_period=datetime.timedelta(seconds=0.5),
@@ -197,7 +213,15 @@ class TestStateMachine(unittest.TestCase):
         execution_stop = datetime.datetime.utcnow()
 
         ##
-        # Verify
+        # Verify the announcer
+        ##
+
+        self.assertFalse(announcer.terminated)
+        self.assertListEqual([], announcer.queue)
+        self.assertTrue(announcer.done())
+
+        ##
+        # Verify timestamps
         ##
 
         self.assertEqual(8, len(stores))
